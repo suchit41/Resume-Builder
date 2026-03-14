@@ -1,8 +1,8 @@
 const {Router}  = require('express')
 
-const authMiddleware = require('../middlewares/auth.middleware')
+const authMiddleware = require('../middleware/auth.middleware')
 const interviewController = require('../controllers/interview.controller')
-const upload = require('../middlewares/file.middleware')
+const upload = require('../middleware/file.middleware')
 
 const  interviewRouter = Router()
 
@@ -13,7 +13,15 @@ const  interviewRouter = Router()
  * @access Private
  */
 
-interviewRouter.post('/',authMiddleware.authUser,upload.single("resume"),interviewController.generateInterviewReportController)
+interviewRouter.post(
+	'/',
+	authMiddleware.authUser,
+	upload.fields([
+		{ name: "resume", maxCount: 1 },
+		{ name: "resumeFile", maxCount: 1 }
+	]),
+	interviewController.generateInterviewReportController
+)
 
 
 /**

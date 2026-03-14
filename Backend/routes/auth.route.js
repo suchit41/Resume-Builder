@@ -1,9 +1,7 @@
 const {Router} = require('express')
 const authRouter = Router()
-const loginUserController = require('../controllers/auth.controller')
-const registerUserController = require('../controllers/auth.controller')
-const logOutUserController = require('../controllers/auth.controller')
-const authMiddleware = require('../middlewares/auth.middleware')
+const { loginUserController, registerUserController, logOutUserController, getMeController } = require('../controllers/auth.controller')
+const authMiddleware = require('../middleware/auth.middleware')
 
 
 

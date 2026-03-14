@@ -1,8 +1,31 @@
 import { getAllInterviewReports, generateInterviewReport, getInterviewReportById, generateResumePdf } from "../services/interview.api"
-import { useContext, useEffect } from "react"
+import { useCallback, useContext, useEffect } from "react"
 import { InterviewContext } from "../interview.context"
 import { useParams } from "react-router"
 
+const EMPTY_REPORT = {
+    matchScore: 0,
+    technicalQuestions: [],
+    behavioralQuestions: [],
+    skillGaps: [],
+    preparationPlan: [],
+    title: "Interview Report"
+}
+
+const withDefaults = (report) => {
+    if (!report || typeof report !== "object") {
+        return null
+    }
+
+    return {
+        ...EMPTY_REPORT,
+        ...report,
+        technicalQuestions: Array.isArray(report.technicalQuestions) ? report.technicalQuestions : [],
+        behavioralQuestions: Array.isArray(report.behavioralQuestions) ? report.behavioralQuestions : [],
+        skillGaps: Array.isArray(report.skillGaps) ? report.skillGaps : [],
+        preparationPlan: Array.isArray(report.preparationPlan) ? report.preparationPlan : []
+    }
+}
 
 export const useInterview = () => {
 
@@ -20,44 +43,47 @@ export const useInterview = () => {
         let response = null
         try {
             response = await generateInterviewReport({ jobDescription, selfDescription, resumeFile })
-            setReport(response.interviewReport)
+            setReport(withDefaults(response?.interviewReport))
         } catch (error) {
             console.log(error)
+            window.alert(error?.userMessage || "Failed to generate interview report.")
         } finally {
             setLoading(false)
         }
 
-        return response.interviewReport
+        return withDefaults(response?.interviewReport)
     }
 
-    const getReportById = async (interviewId) => {
+    const getReportById = useCallback(async (interviewId) => {
         setLoading(true)
         let response = null
         try {
             response = await getInterviewReportById(interviewId)
-            setReport(response.interviewReport)
+            setReport(withDefaults(response?.interviewReport))
         } catch (error) {
             console.log(error)
+            setReport(null)
         } finally {
             setLoading(false)
         }
-        return response.interviewReport
-    }
+        return withDefaults(response?.interviewReport)
+    }, [setLoading, setReport])
 
-    const getReports = async () => {
+    const getReports = useCallback(async () => {
         setLoading(true)
         let response = null
         try {
             response = await getAllInterviewReports()
-            setReports(response.interviewReports)
+            setReports(response?.interviewReports ?? [])
         } catch (error) {
             console.log(error)
+            setReports([])
         } finally {
             setLoading(false)
         }
 
-        return response.interviewReports
-    }
+        return response?.interviewReports
+    }, [setLoading, setReports])
 // for download the resume pdf generated based on user self description, resume content and job description.
     const getResumePdf = async (interviewReportId) => {
         setLoading(true)
@@ -84,7 +110,7 @@ export const useInterview = () => {
         } else {
             getReports()
         }
-    }, [ interviewId ])
+    }, [ interviewId, getReportById, getReports ])
 
     return { loading, report, reports, generateReport, getReportById, getReports, getResumePdf }
 

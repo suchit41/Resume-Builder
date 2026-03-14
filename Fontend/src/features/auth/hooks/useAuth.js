@@ -43,7 +43,7 @@ export const useAuth = () => {
     const handleLogout= async ()=>{
         setLoading(true)
         try{
-            const data = await logout({})
+            await logout()
             setUser(null)
         }catch(err){
             console.error("Error in Login" ,err);
@@ -59,16 +59,17 @@ export const useAuth = () => {
     const getAuthUser = async ()=>{
         try{
             const data = await getme()
-            setUser(data.user)
+            setUser(data?.user ?? null)
         }catch(err){
             console.error("Error in getting auth user" ,err);
+            setUser(null)
         }finally{
             setLoading(false)
         }
     }
 
         getAuthUser()
-   },[])
+    },[setLoading, setUser])
 
 
     return {user,loading,handleLogin,handleRegister,handleLogout}

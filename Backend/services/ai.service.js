@@ -7,6 +7,121 @@ const ai = new GoogleGenAI({
     apiKey: process.env.GOOGLE_GENAI_API_KEY
 })
 
+function safeJsonParse(text) {
+    if (!text || typeof text !== "string") {
+        return null;
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch (_err) {
+        const cleaned = text
+            .replace(/```json/gi, "")
+            .replace(/```/g, "")
+            .trim();
+
+        try {
+            return JSON.parse(cleaned);
+        } catch (_err2) {
+            return null;
+        }
+    }
+}
+
+function toQuestionArray(value) {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .filter((item) => item && typeof item === "object")
+        .map((item) => ({
+            question: String(item.question || "").trim(),
+            intention: String(item.intention || "").trim(),
+            answer: String(item.answer || "").trim()
+        }))
+        .filter((item) => item.question && item.intention && item.answer);
+}
+
+function toSkillGaps(value) {
+    const severities = new Set([ "low", "medium", "high" ]);
+
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .filter((item) => item && typeof item === "object")
+        .map((item) => {
+            const rawSeverity = String(item.severity || "").toLowerCase().trim();
+            return {
+                skill: String(item.skill || "").trim(),
+                severity: severities.has(rawSeverity) ? rawSeverity : "medium"
+            };
+        })
+        .filter((item) => item.skill);
+}
+
+function toPreparationPlan(value) {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .filter((item) => item && typeof item === "object")
+        .map((item, index) => {
+            const parsedDay = Number(item.day);
+            return {
+                day: Number.isFinite(parsedDay) && parsedDay > 0 ? parsedDay : index + 1,
+                focus: String(item.focus || "").trim(),
+                tasks: Array.isArray(item.tasks)
+                    ? item.tasks.map((task) => String(task || "").trim()).filter(Boolean)
+                    : []
+            };
+        })
+        .filter((item) => item.focus && item.tasks.length > 0);
+}
+
+function normalizeInterviewReport(raw, jobDescription) {
+    const parsedScore = Number(raw?.matchScore);
+    const matchScore = Number.isFinite(parsedScore)
+        ? Math.max(0, Math.min(100, Math.round(parsedScore)))
+        : 0;
+
+    const technicalQuestions = toQuestionArray(raw?.technicalQuestions);
+    const behavioralQuestions = toQuestionArray(raw?.behavioralQuestions);
+    const skillGaps = toSkillGaps(raw?.skillGaps);
+    const preparationPlan = toPreparationPlan(raw?.preparationPlan);
+
+    let title = String(raw?.title || "").trim();
+    if (!title) {
+        title = String(jobDescription || "").split("\n")[ 0 ]?.slice(0, 100).trim() || "Interview Report";
+    }
+
+    return {
+        title,
+        matchScore,
+        technicalQuestions,
+        behavioralQuestions,
+        skillGaps,
+        preparationPlan
+    };
+}
+
+function hasMeaningfulInterviewContent(report) {
+    if (!report) {
+        return false;
+    }
+
+    return (
+        report.matchScore > 0
+        || report.technicalQuestions.length > 0
+        || report.behavioralQuestions.length > 0
+        || report.skillGaps.length > 0
+        || report.preparationPlan.length > 0
+    );
+}
+
 
 
 
@@ -38,6 +153,10 @@ const interviewReportSchema = z.object({
 
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
+    if (!process.env.GOOGLE_GENAI_API_KEY) {
+        throw new Error("Missing GOOGLE_GENAI_API_KEY");
+    }
+
 
     const prompt = `Generate an interview report for a candidate with the following details:
                         Resume: ${resume}
@@ -54,9 +173,52 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
         }
     })
 
-    return JSON.parse(response.text)
+    const parsedResponse = safeJsonParse(response.text)
 
+    if (!parsedResponse) {
+        throw new Error("AI returned invalid JSON response");
+    }
 
+    let normalizedReport = normalizeInterviewReport(parsedResponse, jobDescription)
+
+    if (hasMeaningfulInterviewContent(normalizedReport)) {
+        return normalizedReport
+    }
+
+    const fallbackPrompt = `Generate a detailed interview report JSON for this candidate. Return ONLY valid JSON with no markdown, no extra text.
+JSON shape:
+{
+  "matchScore": number from 0 to 100,
+  "technicalQuestions": [{"question":"...","intention":"...","answer":"..."}] (at least 5 items),
+  "behavioralQuestions": [{"question":"...","intention":"...","answer":"..."}] (at least 5 items),
+  "skillGaps": [{"skill":"...","severity":"low|medium|high"}] (at least 3 items),
+  "preparationPlan": [{"day":1,"focus":"...","tasks":["...","..."]}] (at least 7 days),
+  "title": "..."
+}
+
+Candidate details:
+Resume: ${resume}
+Self Description: ${selfDescription}
+Job Description: ${jobDescription}`
+
+    const fallbackResponse = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: fallbackPrompt
+    })
+
+    const fallbackParsed = safeJsonParse(fallbackResponse.text)
+    if (!fallbackParsed) {
+        throw new Error("AI returned invalid fallback response");
+    }
+
+    normalizedReport = normalizeInterviewReport(fallbackParsed, jobDescription)
+
+    if (!hasMeaningfulInterviewContent(normalizedReport)) {
+        throw new Error("AI report was empty. Please try again with more detailed input.")
+    }
+
+    return normalizedReport
+}
 
 
 
@@ -114,7 +276,6 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
     return pdfBuffer
 
-}
 }
 
 module.exports = { generateInterviewReport, generateResumePdf };

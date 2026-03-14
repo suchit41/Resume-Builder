@@ -17,8 +17,12 @@ const Register = () => {
 
       const handleSubmit =async (e) => {
         e.preventDefault();
-        await handleRegister({username,email,password})
-        navigate("/login")
+        try {
+          await handleRegister({username,email,password})
+          navigate("/login")
+        } catch (error) {
+          window.alert(error?.userMessage || "Unable to register. Please try again.")
+        }
     }
 
 
@@ -41,7 +45,7 @@ const Register = () => {
                     <label htmlFor="password">Password</label>
                     <input onChange={(e)=>{setPassword(e.target.value)}} type="password" name='password' id='password' placeholder='Enter your password' />
                 </div>
-                <button className='button primary-button'>Register</button>
+                <button disabled={loading} className='button primary-button'>{loading ? 'Registering...' : 'Register'}</button>
             </form>
             <p>Already have an Account? <Link to="/login">Login</Link></p>
         </div>

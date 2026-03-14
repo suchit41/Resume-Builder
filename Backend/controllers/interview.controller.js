@@ -1,8 +1,20 @@
-const { model } = require("mongoose");
-const pdfParse = require("pdf-parse");
+const { PDFParse } = require("pdf-parse");
 const interviewReportModel = require("../model/interviewReport.model");
 
-const { generateInterviewReport } = require("../services/ai.service");
+const { generateInterviewReport, generateResumePdf } = require("../services/ai.service");
+
+async function extractPdfTextFromBuffer(pdfBuffer) {
+    const parser = new PDFParse({ data: pdfBuffer });
+
+    try {
+        const textResult = await parser.getText();
+        return String(textResult?.text || "").trim();
+    } finally {
+        if (typeof parser.destroy === "function") {
+            await parser.destroy();
+        }
+    }
+}
 
 
 /**
@@ -70,29 +82,68 @@ async function generateResumePdfController(req, res) {
  * @description Controller to generate interview report based on user self description, resume and job description.
  */
 async function generateInterviewReportController(req,res){
-    const resumeContent = await (new pdfParse.PDFParse(Uint8Array.from(req.file.buffer))).getText();
+    try {
+        const selfDescription = String(req.body?.selfDescription || "").trim();
+        const jobDescription = String(req.body?.jobDescription || "").trim();
+        const uploadedResume = req.file
+            || req.files?.resume?.[ 0 ]
+            || req.files?.resumeFile?.[ 0 ];
 
-    const {selfDescription, jobDescription} = req.body;
+        if (!jobDescription) {
+            return res.status(400).json({
+                message: "Job description is required."
+            });
+        }
 
+        let resumeText = "";
+        if (uploadedResume?.buffer) {
+            try {
+                resumeText = await extractPdfTextFromBuffer(uploadedResume.buffer);
+            } catch (_error) {
+                return res.status(400).json({
+                    message: "Could not read the uploaded resume. Please upload a valid PDF file."
+                });
+            }
+        }
 
-    const InterviewReportByAi = await generateInterviewReport({
-        resume: resumeContent.text,
-        selfDescription,
-        jobDescription
-    });
+        if (uploadedResume && !resumeText && !selfDescription) {
+            return res.status(400).json({
+                message: "We could not extract text from this PDF resume. Please upload a text-based PDF or add a self description."
+            });
+        }
 
-    const interviewReport = await interviewReportModel.create({
-        userId:req.user.id,
-        resume: resumeContent.text,
-        selfDescribtion:selfDescription,
-        jobDescription,
-        ...InterviewReportByAi
-     })
+        if (!selfDescription && !resumeText) {
+            return res.status(400).json({
+                message: "Either selfDescription or a resume file is required."
+            });
+        }
 
-        res.status(201).json({
+        const InterviewReportByAi = await generateInterviewReport({
+            resume: resumeText,
+            selfDescription,
+            jobDescription
+        });
+
+        const interviewReport = await interviewReportModel.create({
+            user:req.user.id,
+            resume: resumeText,
+            selfDescription,
+            jobDescription,
+            ...InterviewReportByAi
+         })
+
+        return res.status(201).json({
             message:"Interview report generated successfully",
             interviewReport
-    })
+        })
+    } catch (error) {
+        console.error("Error generating interview report:", error);
+        return res.status(500).json({
+            message: error?.message?.includes("GOOGLE_GENAI_API_KEY")
+                ? "Interview service is not configured correctly. Please contact support."
+                : "Failed to generate interview report. Please try again."
+        });
+    }
 }
 
 

@@ -1,6 +1,6 @@
-const usemodel = require('../models/user.model')
+const usemodel = require('../model/user.model')
+const BlackListModel = require('../model/blackList.model')
 const bcrypt = require('bcryptjs');
-const e = require('express');
 const jwt = require('jsonwebtoken')
 
 
@@ -13,7 +13,9 @@ const jwt = require('jsonwebtoken')
 
 async function registerUserController(req,res){
 
-    const {username, email,password} = req.body;
+    const username = (req.body?.username || "").trim();
+    const email = (req.body?.email || "").trim().toLowerCase();
+    const password = req.body?.password;
 
     if (!username || !email || !password){
         return res.status(400).json({
@@ -63,7 +65,8 @@ async function registerUserController(req,res){
 
 
 async function loginUserController(req,res){
-    const {email, password} = req.body;
+    const email = (req.body?.email || "").trim().toLowerCase();
+    const password = req.body?.password;
 
     if (!email || !password){
         return res.status(400).json({
@@ -113,10 +116,10 @@ async function loginUserController(req,res){
 
 
 async function logOutUserController ( req,res){
-    const {token} = req.cookies;
+    const token = req.cookies?.token;
 
     if (token){
-        await BlacklistModel.create({token})
+        await BlackListModel.create({token})
     }
 
     res.clearCookie('token')
@@ -154,7 +157,7 @@ async function getMeController(req,res){
 
 
 
-export default{
+module.exports= {
     loginUserController,
     registerUserController,
     logOutUserController,

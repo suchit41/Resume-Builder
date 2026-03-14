@@ -8,8 +8,8 @@ const api = axios.create({
 export async function register({ username, email, password }) {
     try {
         const response = await api.post('/register', {
-            username,
-            email,
+            username: String(username || '').trim(),
+            email: String(email || '').trim().toLowerCase(),
             password
         });  
         return response.data;
@@ -17,6 +17,7 @@ export async function register({ username, email, password }) {
     }
     catch (error) {
         console.error('Error registering user:', error);
+        error.userMessage = error?.response?.data?.message || 'Registration failed.';
         throw error;
     }
 
@@ -26,7 +27,7 @@ export async function register({ username, email, password }) {
 export async function login({ email, password }) {
     try {
         const response = await api.post('/login', {
-            email,
+            email: String(email || '').trim().toLowerCase(),
             password
         },);
 
@@ -35,6 +36,7 @@ export async function login({ email, password }) {
     }
     catch (error) {
         console.error('Error logging in user:', error);
+        error.userMessage = error?.response?.data?.message || 'Login failed.';
         throw error;
     }
 
@@ -47,7 +49,7 @@ export async function logout() {
         return response.data;
     } catch (err) {
         console.error('Error in logout user :', err);
-        throw error;
+        throw err;
     }
 } 
 
@@ -60,5 +62,6 @@ export async function getme(){
 
     }catch(err){
         console.error("Error in Get-Me" ,err);
+        throw err;
     }
 }

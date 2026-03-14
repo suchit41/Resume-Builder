@@ -2,14 +2,14 @@ const mongoose = require("mongoose")
 
 
 
-const technicalQuestionSchema = new mongoose.schema({
+const technicalQuestionSchema = new mongoose.Schema({
     question:{
         type: String,
         required: [true,"Question is required"]
     },
-    intension:{
+    intention:{
         type: String,
-        required: [true,"Intension is required"]
+        required: [true,"Intention is required"]
     },
     answer:{
         type: String,
@@ -20,14 +20,14 @@ const technicalQuestionSchema = new mongoose.schema({
 })
 
 
-const BehavioralQuestionSchema = new mongoose.schema({
+const BehavioralQuestionSchema = new mongoose.Schema({
     question:{
         type: String,
         required: [true,"Question is required"]
     },
-    intension:{
+    intention:{
         type: String,
-        required: [true,"Intension is required"]
+        required: [true,"Intention is required"]
     },
     answer:{
         type: String,
@@ -38,21 +38,21 @@ const BehavioralQuestionSchema = new mongoose.schema({
 })   
 
 
-const skillGapSchema= new mongose.schema({
+const skillGapSchema= new mongoose.Schema({
     skill:{
         type: String,
         required: [true,"Skill is required"]
     },
-    secerity:{
+    severity:{
         type: String,
-        enum :["Low","Medium","High"],
-        required: [true,"Secerity is required"]
+        enum :["low","medium","high"],
+        required: [true,"Severity is required"]
     }},{
         _id : false
 });
 
 
-const preprationPlanSchema = new mongoose.schema({
+const preparationPlanSchema = new mongoose.Schema({
     day:{
         type: Number,
         required: [true,"Day is required"]  
@@ -70,7 +70,7 @@ const preprationPlanSchema = new mongoose.schema({
 })
 
 
-const interviewReportSchema = new mongoose.schema({
+const interviewReportSchema = new mongoose.Schema({
 
     jobDescription:{
         type: String,
@@ -80,21 +80,38 @@ const interviewReportSchema = new mongoose.schema({
     resume:{
         type: String,
     },
-    selfDescribtion:
+    selfDescription:
     {
         type: String,
-        required: [true,"Self Describtion is needed"]
+        default: ""
     },
     matchScore:
     {
         type: Number,
         min:0,
-        max:100
+        max:100,
+        default: 0
     },
-    technicalQuestion:[technicalQuestionSchema],
-    behavioralQuestion:[BehavioralQuestionSchema],
-    skillGap:[skillGapSchema],
-    preprationPlan:[preprationPlanSchema],
+    technicalQuestions:{
+        type: [technicalQuestionSchema],
+        default: []
+    },
+    behavioralQuestions:{
+        type: [BehavioralQuestionSchema],
+        default: []
+    },
+    skillGaps:{
+        type: [skillGapSchema],
+        default: []
+    },
+    preparationPlan:{
+        type: [preparationPlanSchema],
+        default: []
+    },
+    title: {
+        type: String,
+        default: "Untitled Position"
+    },
     user:{
         type: mongoose.Schema.Types.ObjectId,
         ref: "users",

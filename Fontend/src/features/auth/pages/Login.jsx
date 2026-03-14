@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import {useState} from 'react'
 
 
-const login = () => {
+const Login = () => {
 
     const navigate = useNavigate();
     const {loading,handleLogin} = useAuth()
@@ -17,8 +17,12 @@ const login = () => {
 
     const handleSubmit =async (e) => {
         e.preventDefault();
-        await handleLogin({email,password})
-        navigate("/")
+        try {
+            await handleLogin({email,password})
+            navigate("/")
+        } catch (error) {
+            window.alert(error?.userMessage || "Unable to login. Please check your credentials.")
+        }
     }
 
     if(loading){
@@ -50,4 +54,4 @@ const login = () => {
   )
 }
 
-export default login
+export default Login

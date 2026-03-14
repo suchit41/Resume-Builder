@@ -1,21 +1,55 @@
 import React, { useState, useRef } from 'react'
 import "../styles/home.scss"
 import { useInterview } from '../hooks/useInterview.js'
-import { useNavigate } from 'react-router'
+import { useNavigate, Link } from 'react-router'
 
 const Home = () => {
 
     const { loading, generateReport,reports } = useInterview()
     const [ jobDescription, setJobDescription ] = useState("")
     const [ selfDescription, setSelfDescription ] = useState("")
+    const [ selectedResumeName, setSelectedResumeName ] = useState("")
     const resumeInputRef = useRef()
 
     const navigate = useNavigate()
 
     const handleGenerateReport = async () => {
         const resumeFile = resumeInputRef.current.files[ 0 ]
+
+        if (!jobDescription.trim()) {
+            window.alert("Please add a job description.")
+            return
+        }
+
+        if (!resumeFile && !selfDescription.trim()) {
+            window.alert("Please upload a resume or add a self description.")
+            return
+        }
+
         const data = await generateReport({ jobDescription, selfDescription, resumeFile })
-        navigate(`/interview/${data._id}`)
+        if (data?._id) {
+            navigate(`/interview/${data._id}`)
+        }
+    }
+
+    const handleResumeFileChange = (event) => {
+        const file = event.target.files?.[ 0 ]
+
+        if (!file) {
+            setSelectedResumeName("")
+            return
+        }
+
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+
+        if (!isPdf) {
+            window.alert("Please upload a PDF resume file.")
+            event.target.value = ""
+            setSelectedResumeName("")
+            return
+        }
+
+        setSelectedResumeName(file.name)
     }
 
     if (loading) {
@@ -34,6 +68,28 @@ const Home = () => {
                 <h1>Create Your Custom <span className='highlight'>Interview Plan</span></h1>
                 <p>Let our AI analyze the job requirements and your unique profile to build a winning strategy.</p>
             </header>
+
+            {/* Career Tools Nav Button — links to the 6 AI-powered career tools */}
+            <Link
+                to="/career-tools"
+                style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    background: "rgba(79,110,247,0.1)",
+                    border: "1px solid rgba(79,110,247,0.3)",
+                    borderRadius: "8px",
+                    padding: "0.6rem 1.2rem",
+                    color: "#6b85f8",
+                    textDecoration: "none",
+                    fontSize: "0.88rem",
+                    fontWeight: 600,
+                    marginBottom: "1.5rem",
+                    transition: "background 0.2s",
+                }}
+            >
+                🚀 Explore AI Career Tools →
+            </Link>
 
             {/* Main Card */}
             <div className='interview-card'>
@@ -54,7 +110,7 @@ const Home = () => {
                             placeholder={`Paste the full job description here...\ne.g. 'Senior Frontend Engineer at Google requires proficiency in React, TypeScript, and large-scale system design...'`}
                             maxLength={5000}
                         />
-                        <div className='char-counter'>0 / 5000 chars</div>
+                        <div className='char-counter'>{jobDescription.length} / 5000 chars</div>
                     </div>
 
                     {/* Vertical Divider */}
@@ -80,8 +136,9 @@ const Home = () => {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" /></svg>
                                 </span>
                                 <p className='dropzone__title'>Click to upload or drag &amp; drop</p>
-                                <p className='dropzone__subtitle'>PDF or DOCX (Max 5MB)</p>
-                                <input ref={resumeInputRef} hidden type='file' id='resume' name='resume' accept='.pdf,.docx' />
+                                <p className='dropzone__subtitle'>PDF only (Max 5MB)</p>
+                                {selectedResumeName && <p className='dropzone__subtitle'>Selected: {selectedResumeName}</p>}
+                                <input onChange={handleResumeFileChange} ref={resumeInputRef} hidden type='file' id='resume' name='resume' accept='.pdf,application/pdf' />
                             </label>
                         </div>
 

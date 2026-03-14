@@ -5,36 +5,46 @@ const api = axios.create({
     withCredentials:true
 })
 
-export const generateInterviewReport = ({jobDescription, selfDescription,resumeFile})=>{
+export const generateInterviewReport = async ({jobDescription, selfDescription,resumeFile})=>{
 
     const formData = new FormData();
     formData.append("jobDescription", jobDescription);
     formData.append("selfDescription", selfDescription);
-    formData.append("resume", resumeFile);
+    if (resumeFile) {
+        formData.append("resume", resumeFile);
+    }
 
-    const response = api.post("/api/interview/.", formData, {
-        headers: {
-            "Content-Type": "multipart/form-data"
-        }
-    })
-
-    return response.data;
+    try {
+        const response = await api.post("/api/interview/", formData)
+        return response.data;
+    } catch (error) {
+        console.error("Error generating interview report:", error);
+        const message = error?.response?.data?.message || "Failed to generate interview report.";
+        error.userMessage = message;
+        throw error;
+    }
 }
 
 
-export const getInterviewReportById = (interviewId)=>{
-
-    const response = api.get(`/api/interview/report/${interviewId}`)
-
-    return response.data;
+export const getInterviewReportById = async (interviewId)=>{
+    try {
+        const response = await api.get(`/api/interview/report/${interviewId}`)
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching interview report:", error);
+        throw error;
+    }
 }
 
 
-export const getAllInterviewReports = ()=>{
-
-    const response = api.get("/api/interview/")
-
-    return response.data;
+export const getAllInterviewReports = async ()=>{
+    try {
+        const response = await api.get("/api/interview/")
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching all interview reports:", error);
+        throw error;
+    }
 }
 
 
