@@ -58,7 +58,7 @@ export const useInterview = () => {
 
         return response.interviewReports
     }
-
+// for download the resume pdf generated based on user self description, resume content and job description.
     const getResumePdf = async (interviewReportId) => {
         setLoading(true)
         let response = null
